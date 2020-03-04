@@ -451,6 +451,15 @@ class CampaignManager(object):
         """
         Return the results relative to the desired parameter space in the form
         of a .mat file.
+        The mat file includes variables:
+            results (cell array): contains all parameters and processed results.
+                The first dimensions correspond to parameter_space, the last
+                include, instead the processed results from result_parsing_function.
+            dimension_labels (cell array): contains keys and values of the
+                parameter_space. No labels are given for the the results
+                obtained with result_parsing_function. The first columns contains
+                the parameter names, the second column contains the values
+                corresponding to the parameter.
 
         Args:
             parameter_space (dict): dictionary containing
@@ -468,20 +477,18 @@ class CampaignManager(object):
             if not isinstance(parameter_space[key], list):
                 parameter_space[key] = [parameter_space[key]]
 
+        # Obtain results as nparray converted to np.object (forces matlab cell array)
+        results = self.get_results_as_numpy_array(parameter_space,
+                                                  result_parsing_function,
+                                                  runs=runs).astype(np.object)
         # Add a dimension label for each non-singular dimension
-        dimension_labels = [{key: np.array(parameter_space[key],
-                                           dtype=np.object)} for key in
-                            parameter_space.keys() if len(parameter_space[key])
-                            > 0] + [{'runs': range(runs)}]
+        dimension_labels = [[key, np.array(value, dtype=np.object)] 
+                            for (key, value) in parameter_space.items()]
 
         # Create a list of the parameter names
-
         return savemat(
             filename,
-            {'results':
-             self.get_results_as_numpy_array(parameter_space,
-                                             result_parsing_function,
-                                             runs=runs).astype(np.object),
+            {'results': results,
              'dimension_labels': dimension_labels})
 
     def save_to_npy_file(self, parameter_space,
